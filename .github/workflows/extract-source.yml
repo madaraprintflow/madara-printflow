@@ -1,0 +1,49 @@
+name: Extract MADARA PRINT FLOW Source
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract source ZIP
+        run: |
+          set -e
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No ZIP file found in repository root."
+            exit 1
+          fi
+
+          mkdir -p /tmp/printflow-source
+          unzip -q "$ZIP_FILE" -d /tmp/printflow-source
+
+          SOURCE_DIR=$(find /tmp/printflow-source -name package.json -printf '%h\n' | head -n 1)
+
+          if [ -z "$SOURCE_DIR" ]; then
+            echo "Could not find package.json in the ZIP."
+            exit 1
+          fi
+
+          cp -a "$SOURCE_DIR/." .
+          rm -f "$ZIP_FILE"
+
+      - name: Commit extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract MADARA PRINT FLOW source"
+            git push
+          fi
